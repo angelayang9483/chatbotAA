@@ -1,8 +1,8 @@
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.memory import VectorStoreRetrieverMemory
-from langchain_chroma import Chroma
-from langchain_huggingface.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.schema import Document
 
 import re
@@ -14,7 +14,7 @@ vectorstore = Chroma(
     persist_directory=memory_path,
     embedding_function=HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-mpnet-base-v2",
-        model_kwargs={"device": "cuda"}  # use "cpu" if no GPU
+        model_kwargs={"device": "cpu"}  # Changed from "cuda" to "cpu"
     )
 )
 
@@ -64,4 +64,8 @@ def handle_conversation():
 
 if __name__ == "__main__":
     handle_conversation()
+
+# Export important objects to be reused
+__all__ = ["memory", "chain", "store_interaction"]
+
 

@@ -1,43 +1,36 @@
 import streamlit as st
-import requests
-import os
+from langchain_ollama import OllamaLLM
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.memory import VectorStoreRetrieverMemory
+from langchain.schema import Document
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+import re
 
-# Long-term memory file
-MEMORY_FILE = "memory.txt"
-SYSTEM_PROMPT = "You are a helpful, friendly assistant with long-term memory. Be clear and concise."
+from chatbot import memory, chain, store_interaction
 
-# Load memory from file
-if os.path.exists(MEMORY_FILE):
-    with open(MEMORY_FILE, "r") as f:
-        history = f.read().splitlines()
-else:
-    history = []
 
-# Streamlit UI
-st.title("💬 Chat with Ollama (with Memory)")
-user_input = st.text_input("You:")
+# ... (Your existing code for initializing model, memory, etc.) ...
 
-if user_input:
-    if user_input.lower() == "clear":
-        history = []
-        open(MEMORY_FILE, "w").close()
-        st.success("🧠 Memory cleared!")
-    else:
-        history.append(f"You: {user_input}")
-        full_prompt = f"{SYSTEM_PROMPT}\n\n" + "\n".join(history)
+st.title("Bioengineering Lab Chatbot")
 
-        response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={"model": "llama2", "prompt": full_prompt, "stream": False}
-        )
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [{"role": "assistant", "content": "Hello! How can I help you today?"}]
 
-        reply = response.json()["response"].strip()
-        history.append(f"Bot: {reply}")
+for msg in st.session_state["messages"]:
+    st.chat_message(msg["role"]).write(msg["content"])
 
-        # Save memory
-        with open(MEMORY_FILE, "w") as f:
-            f.write("\n".join(history))
+if prompt := st.chat_input():
+    st.session_state["messages"].append({"role": "user", "content": prompt})
+    st.chat_message("user").write(prompt)
 
-# Display chat history
-for msg in history[::-1]:
-    st.markdown(msg)
+    retrieved_memory = memory.load_memory_variables({"input": prompt})["history"]
+    result = chain.invoke({"history": retrieved_memory, "question": prompt})
+    ai_response = re.sub(r"<think>.*?</think>", "", result, flags=re.DOTALL).strip()
+
+    st.session_state["messages"].append({"role": "assistant", "content": ai_response})
+    st.chat_message("assistant").write(ai_response)
+
+    store_interaction(prompt, ai_response)
+
+
